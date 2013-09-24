@@ -1,5 +1,7 @@
 (ns euler.batch1)
 
+(use 'clojure.string)
+
 (defn is-multiple? [n xs]
   (some #(= (clojure.core/rem n %) 0) xs))
 
@@ -38,10 +40,10 @@
   (let [multiples (range (* x 2) max x)]
     (apply disj xs multiples)))
 
-(defn primes
+(defn primes-max
   "Generate vector of primes up to given maximum using Sieve of Erastothenes."
   [max]
-  (let [rem (set (range 1 max))]
+  (let [rem (set (range 2 max))]
     (apply vector (sort (reduce (partial remove-multiples max) rem (range 2 max))))))
 
 (defn p3
@@ -50,8 +52,159 @@
   What is the largest prime factor of the number 600851475143 ?"
   []
   (let [target 600851475143
-        p (primes (Math/sqrt target))
+        p (primes-max (Math/sqrt target))
         is-factor? #(zero? (clojure.core/rem %1 %2))]
     (apply max (filter (partial is-factor? target) p))))
 
 ;; (println (p3))
+
+(defn is-palindrome? [n]
+  (let [seq-n (seq (str n))]
+    (= seq-n (reverse seq-n))))
+
+(defn p4
+  "A palindromic number reads the same both ways. The largest palindrome
+   made from the product  of two 2-digit numbers is 9009 = 91 × 99.
+
+   Find the largest palindrome made from the product of two 3-digit numbers."
+  []
+  (let [products (for [first (range 100 1000)
+                       second (range 100 1000)]
+                   (* first second))]
+    (apply max (filter is-palindrome? products))))
+
+;; (println (p4))
+
+(defn divisible-by-range?
+  "Test whether an int is divisible by all ints in a range."
+  [rng n]
+  (every? #(zero? (rem n %)) rng))
+
+(defn p5
+  "2520 is the smallest number that can be divided by each of the
+   numbers from 1 to 10 without any remainder.
+
+   What is the smallest positive number that is evenly divisible
+   by all of the numbers from 1 to 20?"
+  [max-int]
+  (let [candidates (iterate #(+ % max-int) max-int)
+        divisible? (partial divisible-by-range? (range 2 (inc max-int)))]
+    (first (filter divisible? candidates))))
+
+;; (println (p5 20))
+
+(defn p6
+  "The sum of the squares of the first ten natural numbers is,
+
+  12 + 22 + ... + 102 = 385 The square of the sum of the first ten
+  natural numbers is,
+
+  (1 + 2 + ... + 10)2 = 552 = 3025 Hence the difference between the
+  sum of the squares of the first ten natural numbers and the square
+  of the sum is 3025 − 385 = 2640.
+
+  Find the difference between the sum of the squares of the first one
+  hundred natural numbers and the square of the sum."
+  []
+  (let [rng (range 1 101)
+        sum-of-squares (apply + (map #(Math/pow % 2) rng))
+        square-of-sum (Math/pow (apply + rng) 2)]
+    (- square-of-sum sum-of-squares)))
+
+;; (println (p6))
+
+(defn p7
+  "By listing the first six prime numbers: 2, 3, 5, 7, 11, and 13, we
+  can see that the 6th prime is 13.
+
+  What is the 10 001st prime number?"
+  [limit]
+  (letfn [(add-composite [cs c p]
+            (let [next-c (+ c p)
+                  next-p (if (contains? cs next-c) (cs next-c) [])]
+              (dissoc (assoc cs next-c (conj (cs next-c) p)) c)))]
+    (loop [test 2 composites {} primes []]
+      (if (= limit (count primes))
+        primes
+        (if (contains? composites test)
+          (recur (inc test)
+                 (reduce #(add-composite %1 test %2) composites (composites test))
+                 primes)
+          (recur (inc test)
+                 (assoc composites (* test test) [test])
+                 (conj primes test)))))))
+
+;; (println (last (p7 10001)))
+
+(defn chars->ints [cs] (map #(- (int %) 48) cs))
+
+(defn p8-seqs [seq]
+  (loop [r [] s seq]
+    (if (< (count s) 5)
+      r
+      (recur (conj r (take 5 s)) (next s)))))
+
+(defn p8
+  "Find the greatest product of five consecutive
+   digits in the 1000-digit number."
+  [s]
+  (let [in (replace s #"\n|\s" "")]
+    (apply max (map #(apply * %) (map chars->ints (p8-seqs in))))))
+
+;; (println (p8
+;;   "73167176531330624919225119674426574742355349194934
+;;   96983520312774506326239578318016984801869478851843
+;;   85861560789112949495459501737958331952853208805511
+;;   12540698747158523863050715693290963295227443043557
+;;   66896648950445244523161731856403098711121722383113
+;;   62229893423380308135336276614282806444486645238749
+;;   30358907296290491560440772390713810515859307960866
+;;   70172427121883998797908792274921901699720888093776
+;;   65727333001053367881220235421809751254540594752243
+;;   52584907711670556013604839586446706324415722155397
+;;   53697817977846174064955149290862569321978468622482
+;;   83972241375657056057490261407972968652414535100474
+;;   82166370484403199890008895243450658541227588666881
+;;   16427171479924442928230863465674813919123162824586
+;;   17866458359124566529476545682848912883142607690042
+;;   24219022671055626321111109370544217506941658960408
+;;   07198403850962455444362981230987879927244284909188
+;;   84580156166097919133875499200524063689912560717606
+;;   05886116467109405077541002256983155200055935729725
+;;   71636269561882670428252483600823257530420752963450"))
+
+(defn is-pythagorean-triple [triple]
+  (let [[a b c] triple]
+    (if (< a b c)
+      (= (+ (* a a) (* b b)) (* c c))
+      false))
+)
+
+(def pythagorean-triples
+  (for [a (range 1 1001)
+        b (range 1 1001)
+        c (range 1 1001)
+        :when (and (< a b c) (is-pythagorean-triple [a b c]))]
+    [a b c]))
+
+(defn p9
+  "A Pythagorean triplet is a set of three natural numbers, a < b < c,
+  for which,
+
+  a2 + b2 = c2 For example, 32 + 42 = 9 + 16 = 25 = 52.
+
+  There exists exactly one Pythagorean triplet for which a + b + c =
+  1000.  Find the product abc."
+  []
+  (apply * (first (filter #(= 1000 (apply + %)) pythagorean-triples))))
+
+;; (println (p9))
+
+(defn p10
+  "The sum of the primes below 10 is 2 + 3 + 5 + 7 = 17.
+
+  Find the sum of all the primes below two million."
+  []
+  (apply + (primes-max 2000000)))
+
+;; (println (p10))
